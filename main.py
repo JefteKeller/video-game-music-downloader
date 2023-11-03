@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 PAGE_URL = None
 PAGE_PREFIX = 'https://downloads.khinsider.com'
+LINK_LIST_FILE_NAME = 'link_list.json'
 
 HEADERS = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X'}
 
@@ -61,7 +62,7 @@ def get_song_link_from_pages(song_list):
 
             song_link_list.append(song_info)
 
-    with open('song_link_list.json', 'w') as file:
+    with open(LINK_LIST_FILE_NAME, 'w') as file:
         json.dump(song_link_list, file, indent=4)
 
     return song_link_list
@@ -111,16 +112,34 @@ def download_songs_from_list(song_list):
 
 
 if __name__ == '__main__':
-    import sys
+    import argparse
 
-    try:
-        PAGE_URL = sys.argv[1]
+    parser = argparse.ArgumentParser()
 
-    except IndexError:
-        print('The page url is not specified.')
+    parser.add_argument(
+        'page_url',
+        type=str,
+        help='The URL to the page where the album is published',
+    )
+    parser.add_argument(
+        '-f',
+        '--filename',
+        type=str,
+        help='Use a json file to load the links instead of a page url',
+    )
+    args = parser.parse_args()
 
-    if PAGE_URL is not None:
+    PAGE_URL = args.page_url
+    song_links = []
+
+    if PAGE_URL is not None and args.filename is None:
         song_info_list = get_song_info_from_page(PAGE_URL)
         song_links = get_song_link_from_pages(song_info_list)
 
-        download_songs_from_list(song_links)
+    if args.filename is not None:
+        import json
+
+        with open(args.filename, 'r') as file:
+            song_links = json.load(file)
+
+    download_songs_from_list(song_links)
