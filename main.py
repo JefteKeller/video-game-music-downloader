@@ -68,10 +68,12 @@ def get_song_link_from_pages(song_list):
 
 
 def download_songs_from_list(song_list):
-    from datetime import datetime
+    import os
+    import random
+    import string
 
-    today = datetime.now()
-    folder_name = f'{today.date()}-{today.time()}'
+    folder_name = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+    os.mkdir(f'./songs/{folder_name}')
 
     with requests.Session() as session:
         for song in song_list:
