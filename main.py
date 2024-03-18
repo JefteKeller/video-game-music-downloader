@@ -3,13 +3,16 @@ from bs4 import BeautifulSoup
 
 
 PAGE_URL = None
+PAGE_ALBUM_NAME = None
 PAGE_PREFIX = 'https://downloads.khinsider.com'
 LINK_LIST_FILE_NAME = 'link_list.json'
 
-HEADERS = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X'}
+HEADERS = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
 
 
 def get_song_info_from_page(page_url):
+    global PAGE_ALBUM_NAME
+
     song_info_list = []
 
     res_page_html = requests.get(page_url, headers=HEADERS)
@@ -18,6 +21,10 @@ def get_song_info_from_page(page_url):
     soup = BeautifulSoup(res_page_html.text, 'html.parser')
 
     file_table = soup.find(id='songlist') or []
+    album_title = soup.find(id='pageContent').find('h2')
+
+    if album_title is not None:
+        PAGE_ALBUM_NAME = album_title.text.replace(':', ' -')
 
     for line in file_table.contents:
         if line == '\n' or len(line.attrs) > 0:
@@ -35,6 +42,8 @@ def get_song_info_from_page(page_url):
 
 
 def get_song_link_from_pages(song_list):
+    global LINK_LIST_FILE_NAME
+
     import json
 
     song_link_list = []
@@ -69,46 +78,50 @@ def get_song_link_from_pages(song_list):
 
 
 def download_songs_from_list(song_list):
-    import os
-    import random
-    import string
+    global PAGE_ALBUM_NAME
 
-    folder_name = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-    os.mkdir(f'./songs/{folder_name}')
+    import os
+
+    if PAGE_ALBUM_NAME is None:
+        import random
+        import string
+
+        PAGE_ALBUM_NAME = ''.join(
+            random.choices(string.ascii_letters + string.digits, k=12)
+        )
+
+    folder_path = f'/mnt/z/temp/{PAGE_ALBUM_NAME}'
+    os.mkdir(folder_path)
 
     with requests.Session() as session:
         for song in song_list:
             if song['mp3_url'] is not None:
-                print(f'Downloading File: {song["name"]}.mp3')
+                print(f'Downloading file: {song["name"]}.mp3')
 
                 song_mp3_download = session.get(
                     song['mp3_url'], headers=HEADERS, stream=True
                 )
 
                 if song_mp3_download.status_code == 200:
-                    with open(
-                        f'./songs/{folder_name}/{song["name"]}.mp3', 'wb'
-                    ) as file:
+                    with open(f'{folder_path}/{song["name"]}.mp3', 'wb') as file:
                         file.write(song_mp3_download.content)
 
                 else:
-                    print(f'Download Failed For File: {song["name"]}.mp3')
+                    print(f'Download failed for file: {song["name"]}.mp3')
 
             if song['flac_url'] is not None:
-                print(f'Downloading File: {song["name"]}.flac')
+                print(f'Downloading file: {song["name"]}.flac')
 
                 song_flac_download = session.get(
                     song['flac_url'], headers=HEADERS, stream=True
                 )
 
                 if song_flac_download.status_code == 200:
-                    with open(
-                        f'./songs/{folder_name}/{song["name"]}.flac', 'wb'
-                    ) as file:
+                    with open(f'{folder_path}/{song["name"]}.flac', 'wb') as file:
                         file.write(song_flac_download.content)
 
                 else:
-                    print(f'Download Failed For File: {song["name"]}.flac')
+                    print(f'Download failed for file: {song["name"]}.flac')
 
 
 if __name__ == '__main__':
@@ -117,15 +130,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        'page_url',
-        type=str,
-        help='The URL to the page where the album is published',
-    )
-    parser.add_argument(
         '-f',
         '--filename',
         type=str,
         help='Use a json file to load the links instead of a page url',
+    )
+
+    parser.add_argument(
+        'page_url',
+        type=str,
+        help='The URL to the page where the album is published',
     )
     args = parser.parse_args()
 
