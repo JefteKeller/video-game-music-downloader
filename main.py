@@ -1,73 +1,103 @@
+import os
+import pathlib
+
+import json
+import argparse
+
 import requests
 from bs4 import BeautifulSoup
 
 
-PAGE_URL = None
-PAGE_ALBUM_NAME = None
 PAGE_PREFIX = 'https://downloads.khinsider.com'
 LINK_LIST_FILE_NAME = 'link_list.json'
+DEFAULT_AUDIO_CODECS = ['mp3', 'flac']
 
 HEADERS = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
 
 
-def get_song_info_from_page(page_url):
-    global PAGE_ALBUM_NAME
+def make_request(url, session=None, headers=HEADERS):
+    if session:
+        response = session.get(url, headers=headers)
+    else:
+        response = requests.get(url, headers=headers)
 
+    response.raise_for_status()
+
+    return response
+
+
+def parse_html(html_content, html_parser='html.parser'):
+    return BeautifulSoup(html_content, html_parser)
+
+
+def get_song_info_from_page(url):
     song_info_list = []
+    album_name = ''
 
-    res_page_html = requests.get(page_url, headers=HEADERS)
-    res_page_html.raise_for_status()
+    response = make_request(url)
+    html_soup = parse_html(response.text)
 
-    soup = BeautifulSoup(res_page_html.text, 'html.parser')
+    try:
+        file_table = html_soup.find(id='songlist').contents
+    except AttributeError as e:
+        raise AttributeError(
+            'The album information could not be found in the requested page'
+        ) from e
 
-    file_table = soup.find(id='songlist') or []
-    album_title = soup.find(id='pageContent').find('h2')
+    try:
+        album_name = html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')
+    except AttributeError:
+        album_name = url.split('/').pop()
 
-    if album_title is not None:
-        PAGE_ALBUM_NAME = album_title.text.replace(':', ' -')
+    for line in file_table:
+        try:
+            if line == '\n' or len(line.attrs) > 0:
+                continue
 
-    for line in file_table.contents:
-        if line == '\n' or len(line.attrs) > 0:
-            continue
+            song_info_link = line.find('a')
 
-        song_info_link = line.find('a')
+            song_info = {
+                'name': song_info_link.text,
+                'page_url': PAGE_PREFIX + song_info_link.attrs['href'],
+            }
+            song_info_list.append(song_info)
 
-        song_name = song_info_link.text
-        song_page_url = PAGE_PREFIX + song_info_link.attrs['href']
+        except (AttributeError, KeyError) as e:
+            raise AttributeError('The song download link could not be found') from e
 
-        song_info = {'name': song_name, 'page_url': song_page_url}
-        song_info_list.append(song_info)
-
-    return song_info_list
+    return song_info_list, album_name
 
 
-def get_song_link_from_pages(song_list):
-    global LINK_LIST_FILE_NAME
-
-    import json
-
+def get_song_link_from_pages(song_list, audio_codecs):
     song_link_list = []
 
     with requests.Session() as session:
         for idx, song in enumerate(song_list, start=1):
-            res_page_html = session.get(song['page_url'], headers=HEADERS)
-            res_page_html.raise_for_status()
+            response = make_request(song['page_url'], session)
+            html_soup = parse_html(response.text)
 
-            soup = BeautifulSoup(res_page_html.text, 'html.parser')
-            anchor_links = soup.find_all(class_='songDownloadLink')
+            anchor_links = html_soup.find_all(class_='songDownloadLink')
+
+            song_mp3_url = None
+            song_flac_url = None
+
+            try:
+                if len(anchor_links) > 0 and 'mp3' in audio_codecs:
+                    song_mp3_url = anchor_links[0].parent.attrs['href']
+
+                if len(anchor_links) > 1 and 'flac' in audio_codecs:
+                    song_flac_url = anchor_links[1].parent.attrs['href']
+
+            except (AttributeError, KeyError) as e:
+                raise AttributeError(
+                    'The song download link could not be retrieved'
+                ) from e
 
             song_info = {
                 'name': f'{idx :02d}. {song["name"]}',
-                'mp3_url': None,
-                'flac_url': None,
+                'mp3_url': song_mp3_url,
+                'flac_url': song_flac_url,
             }
-
-            if len(anchor_links) == 1:
-                song_info['mp3_url'] = anchor_links[0].parent.attrs['href']
-
-            if len(anchor_links) == 2:
-                song_info['mp3_url'] = anchor_links[0].parent.attrs['href']
-                song_info['flac_url'] = anchor_links[1].parent.attrs['href']
 
             song_link_list.append(song_info)
 
@@ -77,83 +107,82 @@ def get_song_link_from_pages(song_list):
     return song_link_list
 
 
-def download_songs_from_list(song_list):
-    global PAGE_ALBUM_NAME
-
-    import os
-
-    if PAGE_ALBUM_NAME is None:
-        import random
-        import string
-
-        PAGE_ALBUM_NAME = ''.join(
-            random.choices(string.ascii_letters + string.digits, k=12)
-        )
-
-    folder_path = f'/mnt/z/temp/{PAGE_ALBUM_NAME}'
-    os.mkdir(folder_path)
-
+def download_songs_from_list(song_list, audio_codecs, output_dir):
     with requests.Session() as session:
         for song in song_list:
-            if song['mp3_url'] is not None:
-                print(f'Downloading file: {song["name"]}.mp3')
+            for codec in audio_codecs:
+                song_url = song[f'{codec}_url']
 
-                song_mp3_download = session.get(
-                    song['mp3_url'], headers=HEADERS, stream=True
-                )
+                if song_url is not None:
+                    print(f'Downloading file: {song["name"]}.{codec}')
 
-                if song_mp3_download.status_code == 200:
-                    with open(f'{folder_path}/{song["name"]}.mp3', 'wb') as file:
-                        file.write(song_mp3_download.content)
+                    song_download = make_request(song_url, session)
 
-                else:
-                    print(f'Download failed for file: {song["name"]}.mp3')
+                    if song_download.status_code == 200:
+                        with open(f'{output_dir}/{song["name"]}.{codec}', 'wb') as file:
+                            file.write(song_download.content)
 
-            if song['flac_url'] is not None:
-                print(f'Downloading file: {song["name"]}.flac')
-
-                song_flac_download = session.get(
-                    song['flac_url'], headers=HEADERS, stream=True
-                )
-
-                if song_flac_download.status_code == 200:
-                    with open(f'{folder_path}/{song["name"]}.flac', 'wb') as file:
-                        file.write(song_flac_download.content)
-
-                else:
-                    print(f'Download failed for file: {song["name"]}.flac')
+                    else:
+                        print(f'Download failed for file: {song["name"]}.{codec}')
 
 
-if __name__ == '__main__':
-    import argparse
-
+def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        '-f',
-        '--filename',
-        type=str,
-        help='Use a json file to load the links instead of a page url',
+        'album_page_url',
+        help='The URL to the page where the album is published',
     )
 
     parser.add_argument(
-        'page_url',
-        type=str,
-        help='The URL to the page where the album is published',
+        '-f',
+        '--load-from-file',
+        action='store_true',
+        help=f'Load song links from the backup json file: "{LINK_LIST_FILE_NAME}" instead of the album page url, in case of download errors',
     )
+
+    parser.add_argument(
+        '-o',
+        '--output-path',
+        default='downloads/',
+        type=pathlib.Path,
+        help='Output directory for the downloaded files. Default: "%(default)s"',
+    )
+
+    parser.add_argument(
+        '-c',
+        '--codec',
+        nargs=1,
+        dest='audio_codecs',
+        choices=DEFAULT_AUDIO_CODECS,
+        default=DEFAULT_AUDIO_CODECS,
+        help='Specify a single audio codec to be downloaded. Default: %(default)s -- Important: Codec must be available in the album',
+    )
+
     args = parser.parse_args()
 
-    PAGE_URL = args.page_url
+    album_name = ''
     song_links = []
 
-    if PAGE_URL is not None and args.filename is None:
-        song_info_list = get_song_info_from_page(PAGE_URL)
-        song_links = get_song_link_from_pages(song_info_list)
+    if args.load_from_file:
+        album_name = args.album_page_url.split('/').pop()
 
-    if args.filename is not None:
-        import json
-
-        with open(args.filename, 'r') as file:
+        with open(LINK_LIST_FILE_NAME, 'r') as file:
             song_links = json.load(file)
 
-    download_songs_from_list(song_links)
+    else:
+        song_info_list, album_name = get_song_info_from_page(args.album_page_url)
+        song_links = get_song_link_from_pages(song_info_list, args.audio_codecs)
+
+    output_dir = os.path.join(args.output_path, album_name)
+    os.makedirs(output_dir)
+
+    download_songs_from_list(song_links, args.audio_codecs, output_dir)
+
+    return print(
+        f'Album: "{album_name}" downloaded to the directory: "{args.output_path}" successfully!'
+    )
+
+
+if __name__ == '__main__':
+    main()
