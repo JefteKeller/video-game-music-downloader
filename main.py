@@ -118,7 +118,7 @@ def get_song_link_from_pages(
                 ) from e
 
             song_link: SongLink = {
-                'name': f'{idx :02d}. {song["name"]}',
+                'name': f'{idx:02d}. {song["name"]}',
                 'mp3_url': song_mp3_url,
                 'flac_url': song_flac_url,
             }
@@ -139,17 +139,19 @@ def download_songs_from_list(
             for codec in audio_codecs:
                 song_url = song[f'{codec}_url']
 
-                if song_url is not None:
-                    print(f'Downloading file: {song["name"]}.{codec}')
+                if song_url is None:
+                    continue
 
-                    song_download = make_request(song_url, session)
+                print(f'Downloading file: {song["name"]}.{codec}')
 
-                    if song_download.status_code == 200:
-                        with open(f'{output_dir}/{song["name"]}.{codec}', 'wb') as file:
-                            file.write(song_download.content)
+                song_download = make_request(song_url, session)
 
-                    else:
-                        print(f'Download failed for file: {song["name"]}.{codec}')
+                if song_download.status_code == 200:
+                    with open(f'{output_dir}/{song["name"]}.{codec}', 'wb') as file:
+                        file.write(song_download.content)
+
+                else:
+                    print(f'Download failed for file: {song["name"]}.{codec}')
 
 
 def main() -> None:
