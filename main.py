@@ -7,15 +7,34 @@ import argparse
 import requests
 from bs4 import BeautifulSoup
 
-
-PAGE_PREFIX = 'https://downloads.khinsider.com'
-LINK_LIST_FILE_NAME = 'link_list.json'
-DEFAULT_AUDIO_CODECS = ['mp3', 'flac']
-
-HEADERS = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
+from typing import Final, TypedDict
 
 
-def make_request(url, session=None, headers=HEADERS):
+PAGE_PREFIX: Final = 'https://downloads.khinsider.com'
+LINK_LIST_FILE_NAME: Final = 'link_list.json'
+DEFAULT_AUDIO_CODECS: Final = ['mp3', 'flac']
+
+HEADERS: Final = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
+
+
+class SongInfo(TypedDict):
+    name: str
+    page_url: str
+
+
+class SongLink(TypedDict):
+    name: str
+    mp3_url: str | None
+    flac_url: str | None
+
+
+type SongInfoList = list[SongInfo]
+type SongLinkList = list[SongLink]
+
+
+def make_request(
+    url: str, session: requests.Session | None = None, headers: dict[str, str] = HEADERS
+):
     if session:
         response = session.get(url, headers=headers)
     else:
@@ -26,13 +45,13 @@ def make_request(url, session=None, headers=HEADERS):
     return response
 
 
-def parse_html(html_content, html_parser='html.parser'):
+def parse_html(html_content: str, html_parser: str = 'html.parser'):
     return BeautifulSoup(html_content, html_parser)
 
 
-def get_song_info_from_page(url):
-    song_info_list = []
-    album_name = ''
+def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
+    song_info_list: SongInfoList = []
+    album_name: str = ''
 
     response = make_request(url)
     html_soup = parse_html(response.text)
@@ -56,7 +75,7 @@ def get_song_info_from_page(url):
 
             song_info_link = line.find('a')
 
-            song_info = {
+            song_info: SongInfo = {
                 'name': song_info_link.text,
                 'page_url': PAGE_PREFIX + song_info_link.attrs['href'],
             }
@@ -68,7 +87,12 @@ def get_song_info_from_page(url):
     return song_info_list, album_name
 
 
-def get_song_link_from_pages(song_list, audio_codecs):
+def get_song_link_from_pages(
+    song_list: SongInfoList, audio_codecs: list[str]
+) -> SongLinkList:
+
+    song_link_list: SongLinkList = []
+
     song_link_list = []
 
     with requests.Session() as session:
@@ -93,13 +117,13 @@ def get_song_link_from_pages(song_list, audio_codecs):
                     'The song download link could not be retrieved'
                 ) from e
 
-            song_info = {
+            song_link: SongLink = {
                 'name': f'{idx :02d}. {song["name"]}',
                 'mp3_url': song_mp3_url,
                 'flac_url': song_flac_url,
             }
 
-            song_link_list.append(song_info)
+            song_link_list.append(song_link)
 
     with open(LINK_LIST_FILE_NAME, 'w') as file:
         json.dump(song_link_list, file, indent=4)
@@ -107,7 +131,9 @@ def get_song_link_from_pages(song_list, audio_codecs):
     return song_link_list
 
 
-def download_songs_from_list(song_list, audio_codecs, output_dir):
+def download_songs_from_list(
+    song_list: SongLinkList, audio_codecs: list[str], output_dir: str
+):
     with requests.Session() as session:
         for song in song_list:
             for codec in audio_codecs:
@@ -126,7 +152,7 @@ def download_songs_from_list(song_list, audio_codecs, output_dir):
                         print(f'Download failed for file: {song["name"]}.{codec}')
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -161,8 +187,8 @@ def main():
 
     args = parser.parse_args()
 
-    album_name = ''
-    song_links = []
+    album_name: str = ''
+    song_links: SongLinkList = []
 
     if args.load_from_file:
         album_name = args.album_page_url.split('/').pop()
