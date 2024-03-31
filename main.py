@@ -58,6 +58,8 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
     song_info_list: SongInfoList = []
     album_name: str = ''
 
+    print('\nRetrieving Album information...')
+
     response = make_request(url)
     html_soup = parse_html(response.text)
 
@@ -72,6 +74,8 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
         album_name = html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')
     except AttributeError:
         album_name = url.split('/').pop()
+
+    print(f'\nAlbum name: {album_name}')
 
     for line in file_table:
         try:
@@ -89,6 +93,8 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
         except (AttributeError, KeyError) as e:
             raise AttributeError('The song download link could not be found') from e
 
+    print(f'Number of songs: {len(song_info_list)}')
+
     return song_info_list, album_name
 
 
@@ -97,6 +103,9 @@ def get_song_link_from_pages(
 ) -> SongDownloadList:
 
     song_download_list: SongDownloadList = []
+
+    print(f'\nRetrieving download links for songs with codecs: {audio_codecs}')
+    print('This may take a while...')
 
     with requests.Session() as session:
         for idx, song_info in enumerate(song_list, start=1):
@@ -143,10 +152,14 @@ def get_song_link_from_pages(
     with open(LINK_LIST_FILE_NAME, 'w') as file:
         json.dump(song_download_list, file, indent=4)
 
+    print(f'Saved download links to file: "{LINK_LIST_FILE_NAME}"')
+
     return song_download_list
 
 
 def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
+    print('\nDownloading songs...')
+
     with requests.Session() as session:
         for link_list in song_list:
             for link in link_list:
@@ -220,7 +233,7 @@ def main() -> None:
     download_songs_from_list(song_links, output_dir)
 
     return print(
-        f'Album: "{album_name}" downloaded to the directory: "{args.output_path}" successfully!'
+        f'\nAlbum: "{album_name}" downloaded to "{args.output_path}" successfully!'
     )
 
 
