@@ -12,9 +12,14 @@ from typing import Final, TypedDict
 
 PAGE_PREFIX: Final = 'https://downloads.khinsider.com'
 LINK_LIST_FILE_NAME: Final = 'link_list.json'
-DEFAULT_AUDIO_CODECS: Final = ['mp3', 'flac']
 
 HEADERS: Final = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
+
+LOSSY_AUDIO_CODECS: Final = ['mp3']
+LOSSLESS_AUDIO_CODECS: Final = ['ogg', 'm4a', 'flac']
+
+AUDIO_CODECS_OPTIONS: Final = LOSSY_AUDIO_CODECS + LOSSLESS_AUDIO_CODECS
+AUDIO_CODECS_DEFAULT: Final = ['mp3', 'flac']
 
 
 class SongInfo(TypedDict):
@@ -23,13 +28,13 @@ class SongInfo(TypedDict):
 
 
 class SongLink(TypedDict):
-    name: str
-    mp3_url: str | None
-    flac_url: str | None
+    name_with_codec: str
+    url: str
 
 
 type SongInfoList = list[SongInfo]
 type SongLinkList = list[SongLink]
+type SongDownloadList = list[SongLinkList]
 
 
 def make_request(
@@ -89,69 +94,76 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
 
 def get_song_link_from_pages(
     song_list: SongInfoList, audio_codecs: list[str]
-) -> SongLinkList:
+) -> SongDownloadList:
 
-    song_link_list: SongLinkList = []
-
-    song_link_list = []
+    song_download_list: SongDownloadList = []
 
     with requests.Session() as session:
-        for idx, song in enumerate(song_list, start=1):
-            response = make_request(song['page_url'], session)
+        for idx, song_info in enumerate(song_list, start=1):
+            response = make_request(song_info['page_url'], session)
             html_soup = parse_html(response.text)
 
             anchor_links = html_soup.find_all(class_='songDownloadLink')
+            song_links: SongLinkList = []
 
-            song_mp3_url = None
-            song_flac_url = None
+            song_name: str = song_info['name']
+            song_lossy_link = None
+            song_lossless_link = None
 
             try:
-                if len(anchor_links) > 0 and 'mp3' in audio_codecs:
-                    song_mp3_url = anchor_links[0].parent.attrs['href']
+                song_lossy_link = anchor_links[0].parent.attrs['href']
 
-                if len(anchor_links) > 1 and 'flac' in audio_codecs:
-                    song_flac_url = anchor_links[1].parent.attrs['href']
+                if len(anchor_links) > 1:
+                    song_lossless_link = anchor_links[1].parent.attrs['href']
 
-            except (AttributeError, KeyError) as e:
+            except (IndexError, AttributeError, KeyError) as e:
                 raise AttributeError(
-                    'The song download link could not be retrieved'
+                    f'The download link for song: "{song_name}" could not be retrieved'
                 ) from e
 
-            song_link: SongLink = {
-                'name': f'{idx:02d}. {song["name"]}',
-                'mp3_url': song_mp3_url,
-                'flac_url': song_flac_url,
-            }
+            for codec in audio_codecs:
+                song_name_with_codec = f'{idx:02d}. {song_name}.{codec}'
 
-            song_link_list.append(song_link)
+                if song_lossy_link and codec in LOSSY_AUDIO_CODECS:
+                    song: SongLink = {
+                        'name_with_codec': song_name_with_codec,
+                        'url': song_lossy_link,
+                    }
+                    song_links.append(song)
+
+                if song_lossless_link and codec in LOSSLESS_AUDIO_CODECS:
+                    song: SongLink = {
+                        'name_with_codec': song_name_with_codec,
+                        'url': song_lossless_link,
+                    }
+                    song_links.append(song)
+
+            song_download_list.append(song_links)
 
     with open(LINK_LIST_FILE_NAME, 'w') as file:
-        json.dump(song_link_list, file, indent=4)
+        json.dump(song_download_list, file, indent=4)
 
-    return song_link_list
+    return song_download_list
 
 
-def download_songs_from_list(
-    song_list: SongLinkList, audio_codecs: list[str], output_dir: str
-):
+def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
     with requests.Session() as session:
-        for song in song_list:
-            for codec in audio_codecs:
-                song_url = song[f'{codec}_url']
+        for link_list in song_list:
+            for link in link_list:
 
-                if song_url is None:
-                    continue
+                link_name_with_codec = link['name_with_codec']
+                url = link['url']
 
-                print(f'Downloading file: {song["name"]}.{codec}')
+                print(f'Downloading file: {link_name_with_codec}')
 
-                song_download = make_request(song_url, session)
+                song_download = make_request(url, session)
 
                 if song_download.status_code == 200:
-                    with open(f'{output_dir}/{song["name"]}.{codec}', 'wb') as file:
+                    with open(f'{output_dir}/{link_name_with_codec}', 'wb') as file:
                         file.write(song_download.content)
 
                 else:
-                    print(f'Download failed for file: {song["name"]}.{codec}')
+                    print(f'Download failed for file: {link_name_with_codec}')
 
 
 def main() -> None:
@@ -182,15 +194,15 @@ def main() -> None:
         '--codec',
         nargs=1,
         dest='audio_codecs',
-        choices=DEFAULT_AUDIO_CODECS,
-        default=DEFAULT_AUDIO_CODECS,
+        choices=AUDIO_CODECS_OPTIONS,
+        default=AUDIO_CODECS_DEFAULT,
         help='Specify a single audio codec to be downloaded. Default: %(default)s -- Important: Codec must be available in the album',
     )
 
     args = parser.parse_args()
 
     album_name: str = ''
-    song_links: SongLinkList = []
+    song_links: SongDownloadList = []
 
     if args.load_from_file:
         album_name = args.album_page_url.split('/').pop()
@@ -205,7 +217,7 @@ def main() -> None:
     output_dir = os.path.join(args.output_path, album_name)
     os.makedirs(output_dir)
 
-    download_songs_from_list(song_links, args.audio_codecs, output_dir)
+    download_songs_from_list(song_links, output_dir)
 
     return print(
         f'Album: "{album_name}" downloaded to the directory: "{args.output_path}" successfully!'
