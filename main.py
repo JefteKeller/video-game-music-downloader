@@ -165,15 +165,16 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
         for link_list in song_list:
             for link in link_list:
 
-                link_name_with_codec = link['name_with_codec']
                 url = link['url']
+                link_name_with_codec = link['name_with_codec']
+                song_output_path = os.path.join(output_dir, link_name_with_codec)
 
                 print(f'Downloading file: {link_name_with_codec}')
 
                 song_download = make_request(url, session)
 
                 if song_download.status_code == 200:
-                    with open(f'{output_dir}/{link_name_with_codec}', 'wb') as file:
+                    with open(song_output_path, 'wb') as file:
                         file.write(song_download.content)
 
                 else:
