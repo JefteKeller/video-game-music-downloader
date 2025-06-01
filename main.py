@@ -1,5 +1,6 @@
 import os
 import pathlib
+import urllib.parse
 
 import json
 import argparse
@@ -179,12 +180,46 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
                     print(f'Download failed for file: {link_name_with_codec}')
 
 
+def download_album_images_from_page(url: str, output_dir: str) -> None:
+    print('\nDownloading Album Images...')
+
+    response = make_request(url)
+    html_soup = parse_html(response.text)
+
+    album_images = html_soup.find_all(class_='albumImage')
+
+    with requests.Session() as session:
+        for image in album_images:
+            image_url = image.a['href']
+            url_unquoted = urllib.parse.unquote_plus(image_url)
+
+            image_name = url_unquoted.split('/').pop()
+            image_output_path = os.path.join(output_dir, image_name)
+
+            print(f'Downloading image file: {image_name}')
+
+            image_download = make_request(image_url, session)
+
+            if image_download.status_code == 200:
+                with open(image_output_path, 'wb') as file:
+                    file.write(image_download.content)
+            else:
+                print(f'Download failed for image file: {image_name}')
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
         'album_page_url',
         help='The URL to the page where the album is published',
+    )
+
+    parser.add_argument(
+        '-ni',
+        '--no-images',
+        action='store_true',
+        help='Disable download of images from the page where the album is published.',
     )
 
     parser.add_argument(
@@ -229,6 +264,12 @@ def main() -> None:
 
     output_dir = os.path.join(args.output_path, album_name)
     os.makedirs(output_dir)
+
+    if not args.no_images:
+        image_output_dir = os.path.join(output_dir, 'images')
+        os.makedirs(image_output_dir)
+
+        download_album_images_from_page(args.album_page_url, image_output_dir)
 
     download_songs_from_list(song_links, output_dir)
 
