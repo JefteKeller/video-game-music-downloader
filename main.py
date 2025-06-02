@@ -23,12 +23,18 @@ AUDIO_CODECS_OPTIONS: Final = LOSSY_AUDIO_CODECS + LOSSLESS_AUDIO_CODECS
 AUDIO_CODECS_DEFAULT: Final = ['mp3', 'flac']
 
 
+type DiscNumber = int | None
+
+
 class SongInfo(TypedDict):
+    disc_number: DiscNumber
+    song_number: int | None
     name: str
     page_url: str
 
 
 class SongLink(TypedDict):
+    disc_number: DiscNumber
     name_with_codec: str
     url: str
 
@@ -65,34 +71,48 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
     html_soup = parse_html(response.text)
 
     try:
-        file_table = html_soup.find(id='songlist').contents
-    except AttributeError as e:
-        raise AttributeError(
-            'The album information could not be found in the requested page'
-        ) from e
-
-    try:
         album_name = html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')
     except AttributeError:
         album_name = url.split('/').pop()
 
     print(f'\nAlbum name: {album_name}')
 
-    for line in file_table:
-        try:
+    try:
+        table_header = html_soup.find(id='songlist_header')
+
+        disc_number_header = table_header.find(string='CD')
+        song_number_header = table_header.find(string='#')
+
+        for line in html_soup.find(id='songlist').contents:
             if line == '\n' or len(line.attrs) > 0:
                 continue
+
+            song_disc_number = None
+            song_number = None
+
+            if disc_number_header is not None:
+                song_disc_number = int(line.contents[3].string)
+
+                if song_number_header is not None:
+                    song_number = int(line.contents[5].string[:-1])
+
+            elif song_number_header is not None:
+                song_number = int(line.contents[3].string[:-1])
 
             song_info_link = line.find('a')
 
             song_info: SongInfo = {
+                'disc_number': song_disc_number,
+                'song_number': song_number,
                 'name': song_info_link.text,
                 'page_url': PAGE_PREFIX + song_info_link.attrs['href'],
             }
             song_info_list.append(song_info)
 
-        except (AttributeError, KeyError) as e:
-            raise AttributeError('The song download link could not be found') from e
+    except (AttributeError, KeyError) as e:
+        raise AttributeError(
+            'Album information could not be found in the requested page'
+        ) from e
 
     print(f'Number of songs: {len(song_info_list)}')
 
@@ -116,7 +136,10 @@ def get_song_link_from_pages(
             anchor_links = html_soup.find_all(class_='songDownloadLink')
             song_links: SongLinkList = []
 
-            song_name: str = song_info['name']
+            song_disc_number = song_info['disc_number']
+            song_number = song_info['song_number'] or idx
+            song_name = song_info['name']
+
             song_lossy_link = None
             song_lossless_link = None
 
@@ -132,10 +155,11 @@ def get_song_link_from_pages(
                 ) from e
 
             for codec in audio_codecs:
-                song_name_with_codec = f'{idx:02d}. {song_name}.{codec}'
+                song_name_with_codec = f'{song_number:02d}. {song_name}.{codec}'
 
                 if song_lossy_link and codec in LOSSY_AUDIO_CODECS:
                     song: SongLink = {
+                        'disc_number': song_disc_number,
                         'name_with_codec': song_name_with_codec,
                         'url': song_lossy_link,
                     }
@@ -143,6 +167,7 @@ def get_song_link_from_pages(
 
                 if song_lossless_link and codec in LOSSLESS_AUDIO_CODECS:
                     song: SongLink = {
+                        'disc_number': song_disc_number,
                         'name_with_codec': song_name_with_codec,
                         'url': song_lossless_link,
                     }
@@ -164,10 +189,21 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
     with requests.Session() as session:
         for link_list in song_list:
             for link in link_list:
-
                 url = link['url']
+                disc_number = link['disc_number']
                 link_name_with_codec = link['name_with_codec']
-                song_output_path = os.path.join(output_dir, link_name_with_codec)
+
+                if disc_number is not None:
+                    song_output_path_with_disc = os.path.join(
+                        output_dir, f'Disc {disc_number:02d}'
+                    )
+                    os.makedirs(song_output_path_with_disc, exist_ok=True)
+
+                    song_output_path = os.path.join(
+                        song_output_path_with_disc, link_name_with_codec
+                    )
+                else:
+                    song_output_path = os.path.join(output_dir, link_name_with_codec)
 
                 print(f'Downloading file: {link_name_with_codec}')
 
