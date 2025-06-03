@@ -1,0 +1,39 @@
+from typing import TypedDict
+
+
+class AudioCodecChoices(TypedDict):
+    lossy: bool
+    no_lossless: bool
+
+
+class AudioCodecFormats(TypedDict):
+    lossy: str | None
+    lossless: str | None
+
+
+class AlbumInfo(TypedDict):
+    album_name: str
+    disc_number_header: str | None
+    song_number_header: str | None
+    audio_codec_formats: AudioCodecFormats
+
+
+type DiscNumber = int | None
+
+
+class SongInfo(TypedDict):
+    disc_number: DiscNumber
+    song_number: int | None
+    name: str
+    page_url: str
+
+
+class SongLink(TypedDict):
+    disc_number: DiscNumber
+    name_with_codec: str
+    url: str | None
+
+
+type SongInfoList = list[SongInfo]
+type SongLinkList = list[SongLink]
+type SongDownloadList = list[SongLinkList]
