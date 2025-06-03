@@ -16,14 +16,21 @@ LINK_LIST_FILE_NAME: Final = 'link_list.json'
 
 HEADERS: Final = {'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X)'}
 
-LOSSY_AUDIO_CODECS: Final = ['mp3']
-LOSSLESS_AUDIO_CODECS: Final = ['ogg', 'm4a', 'flac']
-
-AUDIO_CODECS_OPTIONS: Final = LOSSY_AUDIO_CODECS + LOSSLESS_AUDIO_CODECS
-AUDIO_CODECS_DEFAULT: Final = ['mp3', 'flac']
+LOSSY_AUDIO_CODECS: Final = ['MP3']
+LOSSLESS_AUDIO_CODECS: Final = ['OGG', 'M4A', 'FLAC']
 
 
 type DiscNumber = int | None
+
+
+class AudioCodecChoices(TypedDict):
+    lossy: bool
+    no_lossless: bool
+
+
+class AudioCodecFormats(TypedDict):
+    lossy: str | None
+    lossless: str | None
 
 
 class SongInfo(TypedDict):
@@ -36,7 +43,7 @@ class SongInfo(TypedDict):
 class SongLink(TypedDict):
     disc_number: DiscNumber
     name_with_codec: str
-    url: str
+    url: str | None
 
 
 type SongInfoList = list[SongInfo]
@@ -61,7 +68,7 @@ def parse_html(html_content: str, html_parser: str = 'html.parser'):
     return BeautifulSoup(html_content, html_parser)
 
 
-def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
+def get_song_info_from_page(url: str) -> tuple[SongInfoList, str, AudioCodecFormats]:
     song_info_list: SongInfoList = []
     album_name: str = ''
 
@@ -82,6 +89,11 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
 
         disc_number_header = table_header.find(string='CD')
         song_number_header = table_header.find(string='#')
+
+        audio_codec_formats: AudioCodecFormats = {
+            'lossy': table_header.find(string=LOSSY_AUDIO_CODECS),
+            'lossless': table_header.find(string=LOSSLESS_AUDIO_CODECS),
+        }
 
         for line in html_soup.find(id='songlist').contents:
             if line == '\n' or len(line.attrs) > 0:
@@ -116,16 +128,38 @@ def get_song_info_from_page(url: str) -> tuple[SongInfoList, str]:
 
     print(f'Number of songs: {len(song_info_list)}')
 
-    return song_info_list, album_name
+    return song_info_list, album_name, audio_codec_formats
 
 
 def get_song_link_from_pages(
-    song_list: SongInfoList, audio_codecs: list[str]
+    song_list: SongInfoList,
+    audio_codec_choices: AudioCodecChoices,
+    audio_codec_formats: AudioCodecFormats,
 ) -> SongDownloadList:
 
+    codecs_to_download: list[str | None] = []
     song_download_list: SongDownloadList = []
 
-    print(f'\nRetrieving download links for songs with codecs: {audio_codecs}')
+    if audio_codec_choices['lossy'] and audio_codec_formats['lossy'] is not None:
+        codecs_to_download.append(audio_codec_formats['lossy'])
+
+    if (
+        not audio_codec_choices['no_lossless']
+        and audio_codec_formats['lossless'] is not None
+    ):
+        codecs_to_download.append(audio_codec_formats['lossless'])
+
+    if (
+        not audio_codec_choices['no_lossless']
+        and not audio_codec_choices['lossy']
+        and audio_codec_formats['lossless'] is None
+    ):
+        print(
+            'Lossless codec option not found in album page, falling back to Lossy codec.'
+        )
+        codecs_to_download.append(audio_codec_formats['lossy'])
+
+    print(f'\nRetrieving download links for songs with codecs: {codecs_to_download}')
     print('This may take a while...')
 
     with requests.Session() as session:
@@ -154,24 +188,29 @@ def get_song_link_from_pages(
                     f'The download link for song: "{song_name}" could not be retrieved'
                 ) from e
 
-            for codec in audio_codecs:
-                song_name_with_codec = f'{song_number:02d}. {song_name}.{codec}'
+            for codec in codecs_to_download:
+                song_codec = codec
+                song_url = None
 
-                if song_lossy_link and codec in LOSSY_AUDIO_CODECS:
-                    song: SongLink = {
-                        'disc_number': song_disc_number,
-                        'name_with_codec': song_name_with_codec,
-                        'url': song_lossy_link,
-                    }
-                    song_links.append(song)
+                if codec in LOSSY_AUDIO_CODECS and song_lossy_link is not None:
+                    song_url = song_lossy_link
 
-                if song_lossless_link and codec in LOSSLESS_AUDIO_CODECS:
-                    song: SongLink = {
-                        'disc_number': song_disc_number,
-                        'name_with_codec': song_name_with_codec,
-                        'url': song_lossless_link,
-                    }
-                    song_links.append(song)
+                if codec in LOSSLESS_AUDIO_CODECS:
+                    if song_lossless_link is not None:
+                        song_url = song_lossless_link
+                    else:
+                        print(
+                            f'Lossless song url not found, falling back to Lossy for the song: {song_name}.'
+                        )
+                        song_codec = LOSSY_AUDIO_CODECS[0].lower()
+                        song_url = song_lossy_link
+
+                song: SongLink = {
+                    'disc_number': song_disc_number,
+                    'name_with_codec': f'{song_number:02d}. {song_name}.{song_codec.lower()}',
+                    'url': song_url,
+                }
+                song_links.append(song)
 
             song_download_list.append(song_links)
 
@@ -192,6 +231,12 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
                 url = link['url']
                 disc_number = link['disc_number']
                 link_name_with_codec = link['name_with_codec']
+
+                if url is None:
+                    print(
+                        f'Download link is invalid for file: {link_name_with_codec}. Skipping...'
+                    )
+                    continue
 
                 if disc_number is not None:
                     song_output_path_with_disc = os.path.join(
@@ -275,18 +320,26 @@ def main() -> None:
     )
 
     parser.add_argument(
-        '-c',
-        '--codec',
-        nargs=1,
-        dest='audio_codecs',
-        choices=AUDIO_CODECS_OPTIONS,
-        default=AUDIO_CODECS_DEFAULT,
-        help='Specify a single audio codec to be downloaded. Default: %(default)s -- Important: Codec must be available in the album',
+        '-ls',
+        '--lossy',
+        action='store_true',
+        help='Download the lossy codec option for the songs. Default option if "--no-lossless" is used.',
+    )
+
+    parser.add_argument(
+        '-nl',
+        '--no-lossless',
+        action='store_true',
+        help='Disable download of the lossless codec option available for the songs.',
     )
 
     args = parser.parse_args()
 
-    album_name: str = ''
+    album_name = ''
+    audio_codecs_choices: AudioCodecChoices = {
+        'lossy': args.lossy,
+        'no_lossless': args.no_lossless,
+    }
     song_links: SongDownloadList = []
 
     if args.load_from_file:
@@ -296,8 +349,12 @@ def main() -> None:
             song_links = json.load(file)
 
     else:
-        song_info_list, album_name = get_song_info_from_page(args.album_page_url)
-        song_links = get_song_link_from_pages(song_info_list, args.audio_codecs)
+        song_info_list, album_name, audio_codec_formats = get_song_info_from_page(
+            args.album_page_url
+        )
+        song_links = get_song_link_from_pages(
+            song_info_list, audio_codecs_choices, audio_codec_formats
+        )
 
     output_dir = os.path.join(args.output_path, album_name)
     os.makedirs(output_dir)
