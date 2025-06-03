@@ -222,7 +222,6 @@ def get_song_links(
         ) from e
 
     for codec in codecs_to_download:
-        song_codec = codec
         song_url = None
 
         if codec in LOSSY_AUDIO_CODECS and song_lossy_link is not None:
@@ -235,12 +234,12 @@ def get_song_links(
                 print(
                     f'Lossless song url not found, falling back to Lossy for the song: {song_name}.'
                 )
-                song_codec = LOSSY_AUDIO_CODECS[0].lower()
+                codec = LOSSY_AUDIO_CODECS[0].lower()
                 song_url = song_lossy_link
 
         song: SongLink = {
             'disc_number': song_disc_number,
-            'name_with_codec': f'{song_number:02d}. {song_name}.{song_codec.lower()}',
+            'name_with_codec': f'{song_number:02d}. {song_name}.{codec.lower()}',
             'url': song_url,
         }
         song_links.append(song)
