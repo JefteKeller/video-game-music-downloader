@@ -66,6 +66,34 @@ def get_song_link_from_pages(
     return song_download_list
 
 
+def get_info_from_page(
+    page_url: str,
+    load_links_from_file: bool,
+    lossy_codec: bool,
+    no_lossless_codec: bool,
+) -> tuple[str, SongDownloadList]:
+    if load_links_from_file:
+        album_name = page_url.split('/').pop()
+
+        with open(LINK_LIST_FILE_NAME, 'r') as file:
+            song_links: SongDownloadList = json.load(file)
+
+        return album_name, song_links
+
+    song_info_list, album_name, audio_codec_formats = get_album_info_from_page(page_url)
+    audio_codec_choices: AudioCodecChoices = {
+        'lossy': lossy_codec,
+        'no_lossless': no_lossless_codec,
+    }
+    codecs_to_download = get_codecs_to_download(
+        audio_codec_choices, audio_codec_formats
+    )
+
+    song_links = get_song_link_from_pages(song_info_list, codecs_to_download)
+
+    return album_name, song_links
+
+
 def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> None:
     print('\nDownloading songs...')
 
@@ -118,28 +146,9 @@ def download_album_images_from_page(url: str, output_dir: str) -> None:
 def main() -> None:
     args = gen_argparse()
 
-    album_name = ''
-    song_links: SongDownloadList = []
-
-    if args.load_from_file:
-        album_name = args.album_page_url.split('/').pop()
-
-        with open(LINK_LIST_FILE_NAME, 'r') as file:
-            song_links = json.load(file)
-
-    else:
-        song_info_list, album_name, audio_codec_formats = get_album_info_from_page(
-            args.album_page_url
-        )
-        audio_codec_choices: AudioCodecChoices = {
-            'lossy': args.lossy,
-            'no_lossless': args.no_lossless,
-        }
-        codecs_to_download = get_codecs_to_download(
-            audio_codec_choices, audio_codec_formats
-        )
-
-        song_links = get_song_link_from_pages(song_info_list, codecs_to_download)
+    album_name, song_links = get_info_from_page(
+        args.album_page_url, args.load_from_file, args.lossy, args.no_lossless
+    )
 
     output_dir = os.path.join(args.output_path, album_name)
     os.makedirs(output_dir)
