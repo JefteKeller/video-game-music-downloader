@@ -22,7 +22,7 @@ from constants import (
 )
 
 
-def gen_argparse():
+def gen_argparse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -77,7 +77,7 @@ def gen_argparse():
 
 def make_request(
     url: str, session: requests.Session | None = None, headers: dict[str, str] = HEADERS
-):
+) -> requests.Response:
     if session:
         response = session.get(url, headers=headers)
     else:
@@ -88,7 +88,7 @@ def make_request(
     return response
 
 
-def parse_html(html_content: str, html_parser: str = 'html.parser'):
+def parse_html(html_content: str, html_parser: str = 'html.parser') -> BeautifulSoup:
     return BeautifulSoup(html_content, html_parser)
 
 
@@ -145,7 +145,9 @@ def get_song_info(
     }
 
 
-def get_song_info_list(html_soup, disc_number_header, song_number_header):
+def get_song_info_list(
+    html_soup, disc_number_header, song_number_header
+) -> SongInfoList:
     song_info_list: SongInfoList = []
 
     try:
@@ -169,7 +171,7 @@ def get_song_info_list(html_soup, disc_number_header, song_number_header):
 def get_codecs_to_download(
     audio_codec_choices: AudioCodecChoices,
     audio_codec_formats: AudioCodecFormats,
-):
+) -> list[str]:
     codecs_to_download: list[str] = []
 
     if audio_codec_choices['lossy'] and audio_codec_formats['lossy'] is not None:
@@ -200,7 +202,7 @@ def get_song_links(
     song_info: SongInfo,
     anchor_links: list,
     codecs_to_download: list[str],
-):
+) -> SongLinkList:
     song_links: SongLinkList = []
 
     song_disc_number = song_info['disc_number']
@@ -252,7 +254,7 @@ def download_song(
     session: requests.Session,
     link_name_with_codec: str,
     song_output_path: str,
-):
+) -> None:
     print(f'Downloading file: {link_name_with_codec}')
 
     song_download = make_request(url, session)
@@ -270,7 +272,7 @@ def download_image(
     session: requests.Session,
     image_name: str,
     image_output_path: str,
-):
+) -> None:
     print(f'Downloading image file: {image_name}')
 
     image_download = make_request(url, session)
