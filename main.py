@@ -69,7 +69,7 @@ def get_song_link_from_pages(
     return song_download_list
 
 
-def download_songs_from_list(song_list: SongDownloadList, output_dir: str):
+def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> None:
     print('\nDownloading songs...')
 
     with requests.Session() as session:
