@@ -22,6 +22,7 @@ from utils import (
     get_html_soup,
     get_song_info_list,
     get_song_links,
+    make_song_output_path,
 )
 
 
@@ -73,27 +74,19 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> No
             for link in link_list:
                 url = link['url']
                 disc_number = link['disc_number']
-                link_name_with_codec = link['name_with_codec']
+                name_with_codec = link['name_with_codec']
 
                 if url is None:
                     print(
-                        f'Download link is invalid for file: {link_name_with_codec}. Skipping...'
+                        f'Download link is invalid for file: {name_with_codec}. Skipping...'
                     )
                     continue
 
-                if disc_number is not None:
-                    song_output_path_with_disc = os.path.join(
-                        output_dir, f'Disc {disc_number:02d}'
-                    )
-                    os.makedirs(song_output_path_with_disc, exist_ok=True)
+                song_output_path = make_song_output_path(
+                    output_dir, disc_number, name_with_codec
+                )
 
-                    song_output_path = os.path.join(
-                        song_output_path_with_disc, link_name_with_codec
-                    )
-                else:
-                    song_output_path = os.path.join(output_dir, link_name_with_codec)
-
-                download_song(url, session, link_name_with_codec, song_output_path)
+                download_song(url, session, name_with_codec, song_output_path)
 
 
 def download_album_images_from_page(url: str, output_dir: str) -> None:
