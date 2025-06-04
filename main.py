@@ -19,19 +19,16 @@ from utils import (
     gen_argparse,
     get_album_info,
     get_codecs_to_download,
+    get_html_soup,
     get_song_info_list,
     get_song_links,
-    make_request,
-    parse_html,
 )
 
 
 def get_album_info_from_page(url: str) -> tuple[SongInfoList, str, AudioCodecFormats]:
     print('\nRetrieving Album information...')
 
-    response = make_request(url)
-    html_soup = parse_html(response.text)
-
+    html_soup = get_html_soup(url)
     album_info = get_album_info(url, html_soup)
 
     song_info_list = get_song_info_list(
@@ -51,8 +48,7 @@ def get_song_link_from_pages(
 
     with requests.Session() as session:
         for idx, song_info in enumerate(song_list, start=1):
-            response = make_request(song_info['page_url'], session)
-            html_soup = parse_html(response.text)
+            html_soup = get_html_soup(song_info['page_url'], session)
 
             anchor_links = html_soup.find_all(class_='songDownloadLink')
 
@@ -103,9 +99,7 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> No
 def download_album_images_from_page(url: str, output_dir: str) -> None:
     print('\nDownloading Album Images...')
 
-    response = make_request(url)
-    html_soup = parse_html(response.text)
-
+    html_soup = get_html_soup(url)
     album_images = html_soup.find_all(class_='albumImage')
 
     with requests.Session() as session:
