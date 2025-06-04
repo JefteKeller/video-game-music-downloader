@@ -92,6 +92,12 @@ def parse_html(html_content: str, html_parser: str = 'html.parser') -> Beautiful
     return BeautifulSoup(html_content, html_parser)
 
 
+def get_html_soup(url: str, session: requests.Session | None = None) -> BeautifulSoup:
+    response = make_request(url, session)
+
+    return parse_html(response.text)
+
+
 def get_album_info(url, html_soup) -> AlbumInfo:
     album_name = ''
 
