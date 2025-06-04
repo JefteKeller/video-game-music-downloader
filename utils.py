@@ -1,4 +1,5 @@
 import argparse
+import os
 import pathlib
 
 import requests
@@ -8,6 +9,7 @@ from aliases import (
     AlbumInfo,
     AudioCodecChoices,
     AudioCodecFormats,
+    DiscNumber,
     SongInfo,
     SongInfoList,
     SongLink,
@@ -253,6 +255,18 @@ def get_song_links(
         song_links.append(song)
 
     return song_links
+
+
+def make_song_output_path(
+    output_dir: str, disc_number: DiscNumber, song_name_with_codec: str
+) -> str:
+    if disc_number is None:
+        return os.path.join(output_dir, song_name_with_codec)
+
+    song_output_path_with_disc = os.path.join(output_dir, f'Disc {disc_number:02d}')
+    os.makedirs(song_output_path_with_disc, exist_ok=True)
+
+    return os.path.join(song_output_path_with_disc, song_name_with_codec)
 
 
 def download_song(
