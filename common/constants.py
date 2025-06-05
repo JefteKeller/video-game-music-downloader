@@ -1,6 +1,5 @@
 from typing import Final
 
-
 PAGE_PREFIX: Final = 'https://downloads.khinsider.com'
 LINK_LIST_FILE_NAME: Final = 'link_list.json'
 
