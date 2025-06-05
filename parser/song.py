@@ -45,8 +45,6 @@ def get_song_info_list(
             'Song information could not be found in the requested page'
         ) from e
 
-    print(f'Number of songs: {len(song_info_list)}')
-
     return song_info_list
 
 

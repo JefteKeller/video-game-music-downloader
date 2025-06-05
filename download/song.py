@@ -6,6 +6,7 @@ from download.utils import download_file, make_song_output_path
 
 def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> None:
     print('\nDownloading songs...')
+    print(f'Number of songs: {len(song_list)}\n')
 
     with requests.Session() as session:
         for link_list in song_list:

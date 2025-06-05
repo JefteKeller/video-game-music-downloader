@@ -15,24 +15,38 @@ from common.constants import LINK_LIST_FILE_NAME
 from common.utils import get_html_soup
 
 
-def get_album_info_from_page(url: str) -> tuple[SongInfoList, str, AudioCodecFormats]:
-    print('\nRetrieving Album information...')
+def get_album_name_from_page(url: str) -> str:
+    print('\nRetrieving album information...')
 
+    album_name = ''
     html_soup = get_html_soup(url)
-    album_info = get_album_info(url, html_soup)
+
+    try:
+        album_name = html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')
+    except AttributeError:
+        album_name = url.split('/').pop()
+
+    print(f'Album name: {album_name}')
+
+    return album_name
+
+
+def get_album_info_from_page(url: str) -> tuple[SongInfoList, AudioCodecFormats]:
+    html_soup = get_html_soup(url)
+    album_info = get_album_info(html_soup)
 
     song_info_list = get_song_info_list(
         html_soup, album_info['disc_number_header'], album_info['song_number_header']
     )
 
-    return song_info_list, album_info['album_name'], album_info['audio_codec_formats']
+    return song_info_list, album_info['audio_codec_formats']
 
 
 def get_song_link_from_pages(
     song_list: SongInfoList, codecs_to_download: list[str]
 ) -> SongDownloadList:
     print(f'\nRetrieving download links for songs with codecs: {codecs_to_download}')
-    print('This may take a while...')
+    print('This may take a while...\n')
 
     song_download_list: SongDownloadList = []
 
@@ -60,16 +74,14 @@ def get_info_from_page(
     load_links_from_file: bool,
     lossy_codec: bool,
     no_lossless_codec: bool,
-) -> tuple[str, SongDownloadList]:
+) -> SongDownloadList:
     if load_links_from_file:
-        album_name = page_url.split('/').pop()
-
         with open(LINK_LIST_FILE_NAME, 'r') as file:
             song_links: SongDownloadList = json.load(file)
 
-        return album_name, song_links
+        return song_links
 
-    song_info_list, album_name, audio_codec_formats = get_album_info_from_page(page_url)
+    song_info_list, audio_codec_formats = get_album_info_from_page(page_url)
     audio_codec_choices: AudioCodecChoices = {
         'lossy': lossy_codec,
         'no_lossless': no_lossless_codec,
@@ -80,4 +92,4 @@ def get_info_from_page(
 
     song_links = get_song_link_from_pages(song_info_list, codecs_to_download)
 
-    return album_name, song_links
+    return song_links

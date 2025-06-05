@@ -13,14 +13,21 @@ def gen_argparse() -> argparse.Namespace:
 
     parser.add_argument(
         'album_page_url',
-        help='The URL to the page where the album is published',
+        help='The URL to the page where the album is published.',
+    )
+
+    parser.add_argument(
+        '-oi',
+        '--only-images',
+        action='store_true',
+        help='Only download images from the album.',
     )
 
     parser.add_argument(
         '-ni',
         '--no-images',
         action='store_true',
-        help='Disable download of images from the page where the album is published.',
+        help='Disable download of images from the album.',
     )
 
     parser.add_argument(

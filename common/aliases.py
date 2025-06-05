@@ -12,7 +12,6 @@ class AudioCodecFormats(TypedDict):
 
 
 class AlbumInfo(TypedDict):
-    album_name: str
     disc_number_header: str | None
     song_number_header: str | None
     audio_codec_formats: AudioCodecFormats

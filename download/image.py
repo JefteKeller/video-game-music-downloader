@@ -8,7 +8,7 @@ from download.utils import download_file
 
 
 def download_album_images_from_page(url: str, output_dir: str) -> None:
-    print('\nDownloading album images...')
+    print('\nDownloading album images...\n')
 
     image_output_dir = os.path.join(output_dir, 'images')
     os.makedirs(image_output_dir)
