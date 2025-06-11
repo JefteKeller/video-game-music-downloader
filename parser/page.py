@@ -22,7 +22,9 @@ def get_album_name_from_page(url: str) -> str:
     html_soup = get_html_soup(url)
 
     try:
-        album_name = html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')
+        album_name = (
+            html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')  # type: ignore
+        )
     except AttributeError:
         album_name = url.split('/').pop()
 

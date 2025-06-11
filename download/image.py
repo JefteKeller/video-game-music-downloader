@@ -20,7 +20,7 @@ def download_album_images_from_page(url: str, output_dir: str) -> None:
         for image in album_images:
             image_url = None
             try:
-                image_url = image.a['href']
+                image_url = image.a['href']  # type: ignore
             except (AttributeError, KeyError):
                 print('Image link is invalid. Skipping...')
                 continue
@@ -28,9 +28,9 @@ def download_album_images_from_page(url: str, output_dir: str) -> None:
             if not image_url:
                 continue
 
-            url_unquoted = urllib.parse.unquote_plus(image_url)
+            url_unquoted = urllib.parse.unquote_plus(image_url)  # type: ignore
             image_name = url_unquoted.split('/').pop()
 
             image_output_path = os.path.join(image_output_dir, image_name)
 
-            download_file(image_url, session, image_name, image_output_path)
+            download_file(image_url, session, image_name, image_output_path)  # type: ignore
