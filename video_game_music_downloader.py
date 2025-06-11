@@ -8,13 +8,13 @@ from download.song import download_songs_from_list
 
 def main() -> None:
     args = gen_argparse()
-    album_name = get_album_name_from_page(args.album_page_url)
+    album_name = get_album_name_from_page(args.url)
 
     output_dir = os.path.join(args.output_path, album_name)
     os.makedirs(output_dir)
 
     if not args.no_images:
-        download_album_images_from_page(args.album_page_url, output_dir)
+        download_album_images_from_page(args.url, output_dir)
 
         if args.only_images:
             return print(
@@ -22,7 +22,7 @@ def main() -> None:
             )
 
     song_links = get_info_from_page(
-        args.album_page_url, args.load_from_file, args.lossy, args.no_lossless
+        args.url, args.load_from_file, args.lossy, args.no_lossless
     )
 
     download_songs_from_list(song_links, output_dir)

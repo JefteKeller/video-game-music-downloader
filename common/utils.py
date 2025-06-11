@@ -12,22 +12,17 @@ def gen_argparse() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        'album_page_url',
+        '--url',
+        required=True,
         help='The URL to the page where the album is published.',
     )
 
     parser.add_argument(
-        '-oi',
-        '--only-images',
-        action='store_true',
-        help='Only download images from the album.',
-    )
-
-    parser.add_argument(
-        '-ni',
-        '--no-images',
-        action='store_true',
-        help='Disable download of images from the album.',
+        '-o',
+        '--output-path',
+        required=True,
+        type=pathlib.Path,
+        help='Output directory for the downloaded files.',
     )
 
     parser.add_argument(
@@ -38,14 +33,6 @@ def gen_argparse() -> argparse.Namespace:
             f"""Load song links from the backup json file: "{LINK_LIST_FILE_NAME}"
             instead of the album page url, in case of download errors."""
         ),
-    )
-
-    parser.add_argument(
-        '-o',
-        '--output-path',
-        default='dist/',
-        type=pathlib.Path,
-        help='Output directory for the downloaded files. Default: "%(default)s"',
     )
 
     parser.add_argument(
@@ -63,6 +50,20 @@ def gen_argparse() -> argparse.Namespace:
         '--no-lossless',
         action='store_true',
         help='Disable download of the lossless codec option available for the songs.',
+    )
+
+    parser.add_argument(
+        '-oi',
+        '--only-images',
+        action='store_true',
+        help='Only download images from the album.',
+    )
+
+    parser.add_argument(
+        '-ni',
+        '--no-images',
+        action='store_true',
+        help='Disable download of images from the album.',
     )
 
     return parser.parse_args()
