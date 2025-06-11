@@ -9,6 +9,9 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> No
     print(f'Number of songs: {len(song_list)}\n')
 
     with requests.Session() as session:
+        current_disc_number = 0
+        logged_disc_number = 0
+
         for link_list in song_list:
             for link in link_list:
                 url = link['url']
@@ -20,6 +23,14 @@ def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> No
                         f'Download link is invalid for file: {name_with_codec}. Skipping...'
                     )
                     continue
+
+                if disc_number is not None:
+                    current_disc_number = disc_number
+
+                    if logged_disc_number != current_disc_number:
+                        logged_disc_number = current_disc_number
+
+                        print(f'Downloading Disc: {current_disc_number}')
 
                 song_output_path = make_song_output_path(
                     output_dir, disc_number, name_with_codec
