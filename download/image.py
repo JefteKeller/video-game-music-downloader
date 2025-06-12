@@ -1,8 +1,6 @@
 import os
 import urllib.parse
 
-import requests
-
 from common.utils import get_html_soup
 from download.utils import download_file
 
@@ -16,21 +14,20 @@ def download_album_images_from_page(url: str, output_dir: str) -> None:
     html_soup = get_html_soup(url)
     album_images = html_soup.find_all(class_='albumImage')
 
-    with requests.Session() as session:
-        for image in album_images:
-            image_url = None
-            try:
-                image_url = image.a['href']  # type: ignore
-            except (AttributeError, KeyError):
-                print('Image link is invalid. Skipping...')
-                continue
+    for image in album_images:
+        image_url = None
+        try:
+            image_url = image.a['href']  # type: ignore
+        except (AttributeError, KeyError):
+            print('Image link is invalid. Skipping...')
+            continue
 
-            if not image_url:
-                continue
+        if not image_url:
+            continue
 
-            url_unquoted = urllib.parse.unquote_plus(image_url)  # type: ignore
-            image_name = url_unquoted.split('/').pop()
+        url_unquoted = urllib.parse.unquote_plus(image_url)  # type: ignore
+        image_name = url_unquoted.split('/').pop()
 
-            image_output_path = os.path.join(image_output_dir, image_name)
+        image_output_path = os.path.join(image_output_dir, image_name)
 
-            download_file(image_url, session, image_name, image_output_path)  # type: ignore
+        download_file(image_url, image_name, image_output_path)  # type: ignore
