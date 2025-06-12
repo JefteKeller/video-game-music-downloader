@@ -1,20 +1,17 @@
 import os
 
-import requests
-
 from common.aliases import DiscNumber
 from common.utils import make_request
 
 
 def download_file(
     url: str,
-    session: requests.Session,
     name: str,
     output_path: str,
 ) -> None:
     print(f'Downloading file: {name}')
 
-    download = make_request(url, session)
+    download = make_request(url)
 
     if download.status_code == 200:
         with open(output_path, 'wb') as file:
