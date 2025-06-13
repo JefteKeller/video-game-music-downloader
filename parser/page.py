@@ -3,6 +3,8 @@ from parser.album import get_album_info
 from parser.song import get_song_info_list, get_song_links
 from parser.utils import get_codecs_to_download
 
+import cloudscraper
+
 from common.aliases import (
     AudioCodecChoices,
     AudioCodecFormats,
@@ -50,13 +52,16 @@ def get_song_link_from_pages(
 
     song_download_list: SongDownloadList = []
 
-    for idx, song_info in enumerate(song_list, start=1):
-        html_soup = get_html_soup(song_info['page_url'])
+    with cloudscraper.create_scraper() as session:
+        for idx, song_info in enumerate(song_list, start=1):
+            html_soup = get_html_soup(song_info['page_url'], session)
 
-        anchor_links = html_soup.find_all(class_='songDownloadLink')
+            anchor_links = html_soup.find_all(class_='songDownloadLink')
 
-        song_links = get_song_links(idx, song_info, anchor_links, codecs_to_download)
-        song_download_list.append(song_links)
+            song_links = get_song_links(
+                idx, song_info, anchor_links, codecs_to_download
+            )
+            song_download_list.append(song_links)
 
     with open(LINK_LIST_FILE_NAME, 'w') as file:
         json.dump(song_download_list, file, indent=4)
