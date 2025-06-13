@@ -2,6 +2,7 @@ import os
 import urllib.parse
 
 import cloudscraper
+from pathvalidate import sanitize_filename
 
 from common.utils import get_html_soup
 from download.utils import download_file
@@ -29,7 +30,7 @@ def download_album_images_from_page(url: str, output_dir: str) -> None:
                 continue
 
             url_unquoted = urllib.parse.unquote_plus(image_url)  # type: ignore
-            image_name = url_unquoted.split('/').pop()
+            image_name = sanitize_filename(url_unquoted.split('/').pop())
 
             image_output_path = os.path.join(image_output_dir, image_name)
 

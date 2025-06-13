@@ -1,9 +1,9 @@
 import argparse
-import pathlib
 
 import cloudscraper
 import requests
 from bs4 import BeautifulSoup
+from pathvalidate.argparse import sanitize_filepath_arg
 
 from common.constants import LINK_LIST_FILE_NAME
 
@@ -21,7 +21,7 @@ def gen_argparse() -> argparse.Namespace:
         '-o',
         '--output-path',
         required=True,
-        type=pathlib.Path,
+        type=sanitize_filepath_arg,
         help='Output directory for the downloaded files.',
     )
 

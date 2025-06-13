@@ -4,6 +4,7 @@ from parser.song import get_song_info_list, get_song_links
 from parser.utils import get_codecs_to_download
 
 import cloudscraper
+from pathvalidate import sanitize_filepath
 
 from common.aliases import (
     AudioCodecChoices,
@@ -22,11 +23,13 @@ def get_album_name_from_page(url: str) -> str:
     html_soup = get_html_soup(url)
 
     try:
-        album_name = (
-            html_soup.find(id='pageContent').find('h2').text.replace(':', ' -')  # type: ignore
+        raw_album_name = (
+            html_soup.find(id='pageContent').find('h2').text  # type: ignore
         )
     except AttributeError:
-        album_name = url.split('/').pop()
+        raw_album_name = url.split('/').pop()
+
+    album_name = sanitize_filepath(raw_album_name)
 
     print(f'Album name: {album_name}')
 
