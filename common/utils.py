@@ -75,7 +75,7 @@ def make_request(
     if not session:
         session = cloudscraper.create_scraper()
 
-    response = session.get(url)
+    response = session.get(url, timeout=6.0)
     response.raise_for_status()
 
     return response
