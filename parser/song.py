@@ -1,3 +1,5 @@
+from pathvalidate import sanitize_filename
+
 from common.aliases import SongInfo, SongInfoList, SongLink, SongLinkList
 from common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS, PAGE_PREFIX
 
@@ -19,11 +21,14 @@ def get_song_info(
 
     song_info_link = info_line.find('a')
 
+    song_name = sanitize_filename(song_info_link.text)
+    page_url = PAGE_PREFIX + song_info_link.attrs['href']
+
     return {
         'disc_number': song_disc_number,
         'song_number': song_number,
-        'name': song_info_link.text,
-        'page_url': PAGE_PREFIX + song_info_link.attrs['href'],
+        'name': song_name,
+        'page_url': page_url,
     }
 
 
