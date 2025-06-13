@@ -69,10 +69,13 @@ def gen_argparse() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_request(url: str) -> requests.Response:
-    scraper = cloudscraper.create_scraper()
+def make_request(
+    url: str, session: requests.Session | None = None
+) -> requests.Response:
+    if not session:
+        session = cloudscraper.create_scraper()
 
-    response = scraper.get(url)
+    response = session.get(url)
     response.raise_for_status()
 
     return response
@@ -82,7 +85,7 @@ def parse_html(html_content: str, html_parser: str = 'html.parser') -> Beautiful
     return BeautifulSoup(html_content, html_parser)
 
 
-def get_html_soup(url: str) -> BeautifulSoup:
-    response = make_request(url)
+def get_html_soup(url: str, session: requests.Session | None = None) -> BeautifulSoup:
+    response = make_request(url, session)
 
     return parse_html(response.text)
