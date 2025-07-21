@@ -1,19 +1,19 @@
 import json
-from parser.album import get_album_info
-from parser.song import get_song_info_list, get_song_links
-from parser.utils import get_codecs_to_download
 
 import cloudscraper
 from pathvalidate import sanitize_filepath
 
-from common.aliases import (
+from src.common.aliases import (
     AudioCodecChoices,
     AudioCodecFormats,
     SongDownloadList,
     SongInfoList,
 )
-from common.constants import LINK_LIST_FILE_NAME
-from common.utils import get_html_soup
+from src.common.constants import LINK_LIST_FILE_NAME
+from src.common.utils import get_html_soup
+from src.parser.album import get_album_info
+from src.parser.song import get_song_info_list, get_song_links
+from src.parser.utils import get_codecs_to_download
 
 
 def get_album_name_from_page(url: str) -> str:

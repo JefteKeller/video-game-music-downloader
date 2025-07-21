@@ -1,7 +1,7 @@
 import cloudscraper
 
-from common.aliases import SongDownloadList
-from download.utils import download_file, make_song_output_path
+from src.common.aliases import SongDownloadList
+from src.download.utils import download_file, make_song_output_path
 
 
 def download_songs_from_list(song_list: SongDownloadList, output_dir: str) -> None:

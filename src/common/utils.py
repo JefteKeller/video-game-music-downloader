@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 from pathvalidate.argparse import sanitize_filepath_arg
 
-from common.constants import LINK_LIST_FILE_NAME
+from src.common.constants import LINK_LIST_FILE_NAME
 
 
 def gen_argparse() -> argparse.Namespace:

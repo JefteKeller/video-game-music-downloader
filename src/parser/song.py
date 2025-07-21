@@ -1,7 +1,13 @@
 from pathvalidate import sanitize_filename
 
-from common.aliases import SongInfo, SongInfoList, SongLink, SongLinkList, SongNumbers
-from common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS, PAGE_PREFIX
+from src.common.aliases import (
+    SongInfo,
+    SongInfoList,
+    SongLink,
+    SongLinkList,
+    SongNumbers,
+)
+from src.common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS, PAGE_PREFIX
 
 
 def get_song_numbers(

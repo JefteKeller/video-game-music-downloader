@@ -1,5 +1,5 @@
-from common.aliases import AlbumInfo, AudioCodecFormats
-from common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS
+from src.common.aliases import AlbumInfo, AudioCodecFormats
+from src.common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS
 
 
 def get_album_info(html_soup) -> AlbumInfo:

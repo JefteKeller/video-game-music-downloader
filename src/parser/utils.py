@@ -1,4 +1,4 @@
-from common.aliases import AudioCodecChoices, AudioCodecFormats
+from src.common.aliases import AudioCodecChoices, AudioCodecFormats
 
 
 def get_codecs_to_download(
