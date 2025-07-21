@@ -3,10 +3,10 @@
 ## Usage
 
 ``` Shell
-python video_game_music_downloader.py [-h] --url URL -o OUTPUT_PATH [-f] [-ls] [-nl] [-oi] [-ni]
+video-game-music-downloader [-h] --url URL -o OUTPUT_PATH [-f] [-ls] [-nl] [-oi] [-ni]
 ```
 
-### Options
+## Options
 
 URL to the page where the album is published
 
@@ -54,10 +54,4 @@ Show a help message and exit
 
 ``` Shell
 -h, --help
-```
-
-### Install Dependencies
-
-``` Shell
-python -m pip install -r requirements.txt
 ```
