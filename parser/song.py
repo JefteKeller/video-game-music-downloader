@@ -1,32 +1,50 @@
 from pathvalidate import sanitize_filename
 
-from common.aliases import SongInfo, SongInfoList, SongLink, SongLinkList
+from common.aliases import SongInfo, SongInfoList, SongLink, SongLinkList, SongNumbers
 from common.constants import LOSSLESS_AUDIO_CODECS, LOSSY_AUDIO_CODECS, PAGE_PREFIX
+
+
+def get_song_numbers(
+    info_line, disc_number_header: str | None, song_number_header: str | None
+) -> SongNumbers:
+    disc_number = None
+    song_number = None
+
+    if disc_number_header is not None:
+        try:
+            disc_number = int(info_line.contents[3].string)
+        except TypeError:
+            disc_number = None
+
+        if song_number_header is not None:
+            try:
+                song_number = int(info_line.contents[5].string[:-1])
+            except TypeError:
+                song_number = None
+
+    elif song_number_header is not None:
+        try:
+            song_number = int(info_line.contents[3].string[:-1])
+        except TypeError:
+            song_number = None
+
+    return {
+        'disc_number': disc_number,
+        'song_number': song_number,
+    }
 
 
 def get_song_info(
     info_line, disc_number_header: str | None, song_number_header: str | None
 ) -> SongInfo:
-    song_disc_number = None
-    song_number = None
-
-    if disc_number_header is not None:
-        song_disc_number = int(info_line.contents[3].string)
-
-        if song_number_header is not None:
-            song_number = int(info_line.contents[5].string[:-1])
-
-    elif song_number_header is not None:
-        song_number = int(info_line.contents[3].string[:-1])
-
+    song_numbers = get_song_numbers(info_line, disc_number_header, song_number_header)
     song_info_link = info_line.find('a')
 
     song_name = sanitize_filename(song_info_link.text)
     page_url = PAGE_PREFIX + song_info_link.attrs['href']
 
     return {
-        'disc_number': song_disc_number,
-        'song_number': song_number,
+        **song_numbers,
         'name': song_name,
         'page_url': page_url,
     }

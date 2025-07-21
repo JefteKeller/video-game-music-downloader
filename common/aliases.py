@@ -20,9 +20,12 @@ class AlbumInfo(TypedDict):
 type DiscNumber = int | None
 
 
-class SongInfo(TypedDict):
+class SongNumbers(TypedDict):
     disc_number: DiscNumber
     song_number: int | None
+
+
+class SongInfo(SongNumbers):
     name: str
     page_url: str
 
