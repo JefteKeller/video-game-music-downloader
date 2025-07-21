@@ -2,8 +2,8 @@ import os
 
 import requests
 
-from common.aliases import DiscNumber
-from common.utils import make_request
+from src.common.aliases import DiscNumber
+from src.common.utils import make_request
 
 
 def download_file(

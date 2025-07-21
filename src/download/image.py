@@ -4,8 +4,8 @@ import urllib.parse
 import cloudscraper
 from pathvalidate import sanitize_filename
 
-from common.utils import get_html_soup
-from download.utils import download_file
+from src.common.utils import get_html_soup
+from src.download.utils import download_file
 
 
 def download_album_images_from_page(url: str, output_dir: str) -> None:

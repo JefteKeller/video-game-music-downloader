@@ -1,9 +1,12 @@
 import os
-from parser.page import get_album_name_from_page, get_info_from_page
 
-from common.utils import gen_argparse
-from download.image import download_album_images_from_page
-from download.song import download_songs_from_list
+from src import (
+    download_album_images_from_page,
+    download_songs_from_list,
+    gen_argparse,
+    get_album_name_from_page,
+    get_info_from_page,
+)
 
 
 def main() -> None:
